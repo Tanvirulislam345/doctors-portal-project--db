@@ -2,10 +2,13 @@ const express = require('express')
 const { MongoClient } = require('mongodb');
 const cors = require('cors');
 require('dotenv').config();
+const ObjectId = require('mongodb').ObjectId;
+const stripe = require('stripe')('sk_test_51JvzTsJcQr8Cfu8pbnjfbkLQPmzNR6uuJGnptrUQzQ62kH5Q9FYhuqYbGhiij5od6R9M6oJeL89JPWgLDLg4l03y00svtftjnj');
 
 const app = express();
 const port = process.env.PORT || 7000;
 
+app.use(express.static("public"));
 app.use(cors());
 app.use(express.json());
 
@@ -62,9 +65,34 @@ async function run() {
             console.log(query);
             const cursor = appoinmentCollection.find(query);
             const result = await cursor.toArray();
+            // console.log(result);
+            res.json(result);
+        });
+        app.get('/appoinments/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await appoinmentCollection.findOne(query);
             console.log(result);
             res.json(result);
         });
+
+        //payment gateway
+        app.post("/create-payment-intent", async (req, res) => {
+
+            const paymentInfo = req.body;
+            const amount = paymentInfo.price * 100;
+            // Create a PaymentIntent with the order amount and currency
+            const paymentIntent = await stripe.paymentIntents.create({
+                currency: 'usd',
+                amount: amount,
+                payment_method_types: ['card']
+            });
+
+            res.json({
+                clientSecret: paymentIntent.client_secret,
+            });
+        });
+
 
 
     } finally {
